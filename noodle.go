@@ -2,6 +2,7 @@ package noodle
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/kellydunn/go-opc"
 	"github.com/mrmorphic/hwio"
@@ -14,10 +15,14 @@ const (
 	TotalLeds      = Strips * LEDsPerStrip
 )
 
+type Pixel struct {
+	R uint8
+	G uint8
+	B uint8
+}
+
 type Strip struct {
-	R [LEDsPerStrip]uint8
-	G [LEDsPerStrip]uint8
-	B [LEDsPerStrip]uint8
+	Pixels []Pixel
 }
 
 type Noodle struct {
@@ -27,48 +32,6 @@ type Noodle struct {
 	Strips  []Strip
 	curViz  Viz
 	prevViz Viz
-}
-
-func (n *Noodle) Render() error {
-	for s := range n.Strips {
-		for led := 0; led < LEDsPerStrip; led++ {
-			n.message.SetPixelColor((s*LEDsPerChannel)+led, n.Strips[s].R[led], n.Strips[s].G[led], n.Strips[s].B[led])
-		}
-	}
-	return n.client.Send(n.message)
-}
-
-func (n *Noodle) Solid(r uint8, g uint8, b uint8) error {
-	for s := range n.Strips {
-		for led := 0; led < LEDsPerStrip; led++ {
-			n.Strips[s].R[led] = r
-			n.Strips[s].G[led] = g
-			n.Strips[s].B[led] = b
-		}
-	}
-	return n.Render()
-}
-
-// Turns off all leds
-func (n *Noodle) Off() error {
-	return n.Solid(0, 0, 0)
-}
-
-func (n *Noodle) Red() error {
-	return n.Solid(255, 0, 0)
-}
-
-func (n *Noodle) Green() error {
-	return n.Solid(0, 255, 0)
-}
-
-func (n *Noodle) Blue() error {
-	return n.Solid(0, 0, 255)
-}
-
-func (n *Noodle) ButtonPressed() (bool, error) {
-	value, err := hwio.DigitalRead(n.button)
-	return value == 1, err
 }
 
 func NewNoodle(button_gpio string) (*Noodle, error) {
@@ -96,14 +59,75 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 	strips := make([]Strip, Strips)
 	for i := 0; i < Strips; i++ {
 		strips[i] = Strip{}
+		strips[i].Pixels = make([]Pixel, LEDsPerStrip)
 	}
 
+	viz := NewSpiralViz(5)
+	fmt.Println(viz.String())
 	return &Noodle{
 		button:  button,
 		client:  client,
 		message: message,
 		Strips:  strips,
 		prevViz: nil,
-		curViz:  nil,
+		curViz:  viz,
 	}, nil
+}
+
+// VizLoop runs forever as the main run thread calling Mutate on the Viz's
+// and checking for input like buttons and maybe bluetooth
+func (n *Noodle) VizLoop() {
+	lastRender := time.Now()
+
+	for {
+
+		if time.Since(lastRender).Seconds() > n.curViz.RefreshRate() {
+			fmt.Println(n.curViz.String())
+			n.curViz.Mutate(n)
+			n.Render()
+			lastRender = time.Now()
+		}
+	}
+}
+
+func (n *Noodle) Render() error {
+	for s := range n.Strips {
+		for led := 0; led < LEDsPerStrip; led++ {
+			n.message.SetPixelColor((s*LEDsPerChannel)+led, n.Strips[s].Pixels[led].R, n.Strips[s].Pixels[led].G, n.Strips[s].Pixels[led].B)
+		}
+	}
+	return n.client.Send(n.message)
+}
+
+func (n *Noodle) Solid(r uint8, g uint8, b uint8) error {
+	for s := range n.Strips {
+		for led := 0; led < LEDsPerStrip; led++ {
+			n.Strips[s].Pixels[led].R = r
+			n.Strips[s].Pixels[led].G = g
+			n.Strips[s].Pixels[led].B = b
+		}
+	}
+	return n.Render()
+}
+
+// Turns off all leds
+func (n *Noodle) Off() error {
+	return n.Solid(0, 0, 0)
+}
+
+func (n *Noodle) Red() error {
+	return n.Solid(255, 0, 0)
+}
+
+func (n *Noodle) Green() error {
+	return n.Solid(0, 255, 0)
+}
+
+func (n *Noodle) Blue() error {
+	return n.Solid(0, 0, 255)
+}
+
+func (n *Noodle) ButtonPressed() (bool, error) {
+	value, err := hwio.DigitalRead(n.button)
+	return value == 1, err
 }

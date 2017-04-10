@@ -25,6 +25,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	n.VizLoop()
+
 	for {
 		time.Sleep(time.Millisecond * 500)
 
