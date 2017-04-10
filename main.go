@@ -17,21 +17,37 @@ const (
 	TotalLeds      = Strips * LEDsPerStrip
 )
 
+type Strip struct {
+	R [LEDsPerStrip]uint8
+	G [LEDsPerStrip]uint8
+	B [LEDsPerStrip]uint8
+}
+
 type Noodle struct {
-	b hwio.Pin
-	c *opc.Client
-	m *opc.Message
+	b      hwio.Pin
+	c      *opc.Client
+	m      *opc.Message
+	Strips []Strip
+}
+
+func (n *Noodle) Render() error {
+	for s := range n.Strips {
+		for led := 0; led < LEDsPerStrip; led++ {
+			n.m.SetPixelColor((s*LEDsPerChannel)+led, n.Strips[s].R[led], n.Strips[s].G[led], n.Strips[s].B[led])
+		}
+	}
+	return n.c.Send(n.m)
 }
 
 func (n *Noodle) Solid(r uint8, g uint8, b uint8) error {
-	for s := 0; s < Strips; s++ {
+	for s := range n.Strips {
 		for led := 0; led < LEDsPerStrip; led++ {
-			fmt.Println(s*LEDsPerChannel + led)
-			n.m.SetPixelColor((s*LEDsPerChannel)+led, r, g, b)
+			n.Strips[s].R[led] = r
+			n.Strips[s].G[led] = g
+			n.Strips[s].B[led] = b
 		}
-
 	}
-	return n.c.Send(n.m)
+	return n.Render()
 }
 
 // Turns off all leds
@@ -78,7 +94,12 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 	m = opc.NewMessage(0)
 	m.SetLength(uint16(LEDsPerChannel * Strips * 3))
 
-	return &Noodle{b, c, m}, nil
+	strips := make([]Strip, Strips)
+	for i := 0; i < Strips; i++ {
+		strips[i] = Strip{}
+	}
+
+	return &Noodle{b, c, m, strips}, nil
 }
 
 func main() {
