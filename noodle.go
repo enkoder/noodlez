@@ -1,16 +1,13 @@
-package main
+package noodle
 
 import (
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/kellydunn/go-opc"
 	"github.com/mrmorphic/hwio"
 )
 
 const (
-	ButtonPin      = "gpio17"
 	Strips         = 4
 	LEDsPerStrip   = 37
 	LEDsPerChannel = 64
@@ -28,6 +25,8 @@ type Noodle struct {
 	client  *opc.Client
 	message *opc.Message
 	Strips  []Strip
+	curViz  Viz
+	prevViz Viz
 }
 
 func (n *Noodle) Render() error {
@@ -73,7 +72,7 @@ func (n *Noodle) ButtonPressed() (bool, error) {
 }
 
 func NewNoodle(button_gpio string) (*Noodle, error) {
-	button, err := hwio.GetPin(ButtonPin)
+	button, err := hwio.GetPin(button_gpio)
 	if err != nil {
 		return nil, fmt.Errorf("Error during button init: %v\n", err)
 	}
@@ -99,37 +98,12 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		strips[i] = Strip{}
 	}
 
-	return &Noodle{button, client, message, strips}, nil
-}
-
-func main() {
-	noodle, err := NewNoodle(ButtonPin)
-	if err != nil {
-		os.Stderr.WriteString(err.Error() + "\n")
-		os.Exit(1)
-	}
-
-	err = noodle.Off()
-	if err != nil {
-		os.Stderr.WriteString(err.Error() + "\n")
-		os.Exit(1)
-	}
-
-	for {
-		time.Sleep(time.Millisecond * 500)
-
-		value, err := noodle.ButtonPressed()
-		if err != nil {
-			os.Stderr.WriteString(fmt.Sprintf("Error during DigitalRead: %v\n", err))
-			os.Exit(1)
-		}
-
-		if value {
-			noodle.Blue()
-		} else {
-			noodle.Red()
-		}
-
-		fmt.Printf("Button Value: %t\n", value)
-	}
+	return &Noodle{
+		button:  button,
+		client:  client,
+		message: message,
+		Strips:  strips,
+		prevViz: nil,
+		curViz:  nil,
+	}, nil
 }
