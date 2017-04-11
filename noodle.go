@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kellydunn/go-opc"
+	"github.com/lucasb-eyer/go-colorful"
 	"github.com/mrmorphic/hwio"
 )
 
@@ -16,7 +17,7 @@ const (
 )
 
 type Strip struct {
-	Pixels []Pixel
+	Pixels []colorful.Color
 }
 
 type Noodle struct {
@@ -56,12 +57,12 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 	strips := make([]Strip, NumStrips)
 	for i := 0; i < NumStrips; i++ {
 		strips[i] = Strip{}
-		strips[i].Pixels = make([]Pixel, LEDsPerStrip)
+		strips[i].Pixels = make([]colorful.Color, LEDsPerStrip)
 	}
 
 	vizs := []Viz{
 		NewSoftCircularViz(),
-		NewSpiralViz(10),
+		NewSpiralViz(),
 		NewCircularViz(),
 		NewSnakeViz()}
 
@@ -72,7 +73,7 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		Strips:  strips,
 		vizs:    vizs,
 		prevViz: vizs[0],
-		curViz:  vizs[0],
+		curViz:  vizs[1],
 		vizi:    0,
 	}, nil
 }
@@ -133,38 +134,25 @@ func (n *Noodle) VizLoop() {
 func (n *Noodle) Render() error {
 	for s := range n.Strips {
 		for led := 0; led < LEDsPerStrip; led++ {
-			n.message.SetPixelColor((s*LEDsPerChannel)+led, n.Strips[s].Pixels[led].R, n.Strips[s].Pixels[led].G, n.Strips[s].Pixels[led].B)
+			n.message.SetPixelColor((s*LEDsPerChannel)+led,
+				uint8(n.Strips[s].Pixels[led].R*MaxBrightness),
+				uint8(n.Strips[s].Pixels[led].G*MaxBrightness),
+				uint8(n.Strips[s].Pixels[led].B*MaxBrightness))
 		}
 	}
 	return n.client.Send(n.message)
 }
 
-func (n *Noodle) Solid(r uint8, g uint8, b uint8) error {
+// Turns off all leds
+func (n *Noodle) Off() error {
 	for s := range n.Strips {
 		for led := 0; led < LEDsPerStrip; led++ {
-			n.Strips[s].Pixels[led].R = r
-			n.Strips[s].Pixels[led].G = g
-			n.Strips[s].Pixels[led].B = b
+			n.Strips[s].Pixels[led].R = 0
+			n.Strips[s].Pixels[led].G = 0
+			n.Strips[s].Pixels[led].B = 0
 		}
 	}
 	return n.Render()
-}
-
-// Turns off all leds
-func (n *Noodle) Off() error {
-	return n.Solid(0, 0, 0)
-}
-
-func (n *Noodle) Red() error {
-	return n.Solid(255, 0, 0)
-}
-
-func (n *Noodle) Green() error {
-	return n.Solid(0, 255, 0)
-}
-
-func (n *Noodle) Blue() error {
-	return n.Solid(0, 0, 255)
 }
 
 func (n *Noodle) ButtonPressed() (bool, error) {

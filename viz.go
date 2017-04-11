@@ -2,7 +2,9 @@ package noodle
 
 import (
 	"fmt"
+	"github.com/lucasb-eyer/go-colorful"
 	"math/rand"
+	"os"
 )
 
 const (
@@ -13,7 +15,26 @@ const (
 	Down          = "down"
 	Left          = "left"
 	Right         = "right"
+	NumColors     = 12
 )
+
+var (
+	Off     = colorful.Color{R: 0, G: 0, B: 0}
+	Pallete []colorful.Color
+)
+
+func init() {
+	var err error
+	Pallete, err = colorful.HappyPalette(NumColors)
+	if err != nil {
+		fmt.Printf(err.Error())
+		os.Exit(1)
+	}
+}
+
+func RandomColor() colorful.Color {
+	return Pallete[rand.Intn(NumColors)]
+}
 
 type Viz interface {
 	Mutate(*Noodle)
@@ -36,11 +57,11 @@ func (v *CircularViz) String() string {
 }
 
 func (v *CircularViz) Mutate(n *Noodle) {
+	color := RandomColor()
 	for i := 0; i < LEDsPerStrip; i++ {
-		n.Strips[v.curStrip].Pixels[i] = NamedColors[v.curColor]
+		n.Strips[v.curStrip].Pixels[i] = color
 	}
 	v.curStrip = (v.curStrip + 1) % NumStrips
-	v.curColor = (v.curColor + 1) % len(NamedColors)
 }
 
 func (v *CircularViz) RefreshRate() float64 {
@@ -62,17 +83,17 @@ func (v *SoftCircularViz) String() string {
 }
 
 func (v *SoftCircularViz) Mutate(n *Noodle) {
+	color := RandomColor()
 	for strip := 0; strip < NumStrips; strip++ {
 		for i := 0; i < LEDsPerStrip; i++ {
 			if strip%2 == v.curStrip {
 				n.Strips[strip].Pixels[i] = Off
 			} else {
-				n.Strips[strip].Pixels[i] = NamedColors[v.curColor]
+				n.Strips[strip].Pixels[i] = color
 			}
 		}
 	}
 	v.curStrip = (v.curStrip + 1) % 2
-	v.curColor = (v.curColor + 1) % len(NamedColors)
 }
 
 func (v *SoftCircularViz) RefreshRate() float64 {
@@ -83,7 +104,7 @@ type SnakeViz struct {
 	dir      string
 	headx    uint
 	heady    uint
-	curColor Pixel
+	curColor colorful.Color
 	count    int
 }
 
@@ -91,7 +112,7 @@ func NewSnakeViz() Viz {
 	viz := &SnakeViz{
 		headx:    uint(rand.Intn(NumStrips)),
 		heady:    uint(rand.Intn(LEDsPerStrip)),
-		curColor: Red,
+		curColor: RandomColor(),
 	}
 	viz.dir = Up
 	return viz
@@ -154,7 +175,7 @@ func (v *SnakeViz) Mutate(n *Noodle) {
 	v.heady = y
 	v.count += 1
 	if v.count > 100 {
-		v.curColor = NamedColors[rand.Intn(len(NamedColors))]
+		v.curColor = RandomColor()
 		v.count = 0
 	}
 }
@@ -166,35 +187,27 @@ func (v *SnakeViz) RefreshRate() float64 {
 type SpiralViz struct {
 	curStrip uint8
 	curLED   uint8
-	stateR   uint8
-	stateG   uint8
-	stateB   uint8
-	r        uint8
-	g        uint8
-	b        uint8
-	step     uint8
+	curColor colorful.Color
+	count    int
 }
 
-func NewSpiralViz(step uint8) Viz {
+func NewSpiralViz() Viz {
 	return &SpiralViz{
-		r:      MaxBrightness,
-		g:      0,
-		b:      0,
-		stateR: Decreasing,
-		stateG: Increasing,
-		stateB: 0,
-		step:   step,
+		curLED:   0,
+		curStrip: 0,
+		count:    0,
+		curColor: RandomColor(),
 	}
 }
 
 func (v *SpiralViz) String() string {
 	return fmt.Sprintf(
-		"SpiralViz: %d.%d[%d, %d, %d]",
+		"SpiralViz: %d.%d[%f, %f, %f]",
 		v.curStrip,
 		v.curLED,
-		v.r,
-		v.g,
-		v.b,
+		v.curColor.R,
+		v.curColor.G,
+		v.curColor.B,
 	)
 }
 
@@ -205,42 +218,14 @@ func (v *SpiralViz) Mutate(n *Noodle) {
 		v.curLED = (v.curLED + 1) % LEDsPerStrip
 	}
 
-	if v.stateR == Increasing && v.r+v.step >= MaxBrightness {
-		v.stateR = Decreasing
-		v.stateG = Increasing
-		v.stateB = 0
-	} else if v.stateG == Increasing && v.g+v.step >= MaxBrightness {
-		v.stateR = 0
-		v.stateG = Decreasing
-		v.stateB = Increasing
-	} else if v.stateB == Increasing && v.b+v.step >= MaxBrightness {
-		v.stateR = Increasing
-		v.stateG = 0
-		v.stateB = Decreasing
+	v.count += 1
+	n.Strips[v.curStrip].Pixels[v.curLED] = v.curColor
+	if v.count > 20 {
+		v.curColor = RandomColor()
+		v.count = 0
 	}
-
-	// Change values of colors
-	if v.stateR == Increasing {
-		v.r += v.step
-	} else if v.stateR == Decreasing {
-		v.r -= v.step
-	}
-	if v.stateG == Increasing {
-		v.g += v.step
-	} else if v.stateG == Decreasing {
-		v.g -= v.step
-	}
-	if v.stateB == Increasing {
-		v.b += v.step
-	} else if v.stateB == Decreasing {
-		v.b -= v.step
-	}
-
-	n.Strips[v.curStrip].Pixels[v.curLED].R = v.r
-	n.Strips[v.curStrip].Pixels[v.curLED].G = v.g
-	n.Strips[v.curStrip].Pixels[v.curLED].B = v.b
 }
 
 func (v SpiralViz) RefreshRate() float64 {
-	return .05
+	return .04
 }
