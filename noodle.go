@@ -74,15 +74,51 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 // VizLoop runs forever as the main run thread calling Mutate on the Viz's
 // and checking for input like buttons and maybe bluetooth
 func (n *Noodle) VizLoop() {
+	var err error
 	lastRender := time.Now()
+	lastButtonPress := time.Now()
+	lastButtonRead := time.Now()
+	buttval := false
+	prevButtVal := false
+	changed := false
 
 	for {
-
 		if time.Since(lastRender).Seconds() > n.curViz.RefreshRate() {
 			fmt.Println(n.curViz.String())
 			n.curViz.Mutate(n)
 			n.Render()
 			lastRender = time.Now()
+		}
+
+		// Read button press
+		if time.Since(lastButtonRead) > time.Millisecond*100 {
+			lastButtonRead = time.Now()
+			buttval, err = n.ButtonPressed()
+			fmt.Printf("buttval: %t - prevbutt: %t - time: %s\n", buttval, prevButtVal, time.Since(lastButtonPress).String())
+			if err != nil {
+				fmt.Printf("Error during button read: %v", err)
+				continue
+			}
+
+			// Someone just pressed a button
+			if buttval && !prevButtVal {
+				lastButtonPress = time.Now()
+				prevButtVal = true
+				// If its been pressed for a bit
+			} else if buttval && prevButtVal {
+				// change viz
+				if time.Since(lastButtonPress) > 1*time.Second && !changed {
+					changed = true
+					n.Off()
+					// Shoot lights viz
+				} else if !changed {
+
+				}
+				// no press
+			} else {
+				changed = false
+				prevButtVal = false
+			}
 		}
 	}
 }
