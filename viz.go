@@ -16,6 +16,32 @@ type Viz interface {
 	String() string
 }
 
+type CircularViz struct {
+	curStrip int
+	curColor int
+}
+
+func NewCircularViz() Viz {
+	viz := &CircularViz{}
+	return viz
+}
+
+func (v *CircularViz) String() string {
+	return fmt.Sprintf("CircularViz: curStrip: %d - curColor: %d", v.curStrip, v.curColor)
+}
+
+func (v *CircularViz) Mutate(n *Noodle) {
+	for i := 0; i < LEDsPerStrip; i++ {
+		n.Strips[v.curStrip].Pixels[i] = NamedColors[v.curColor]
+	}
+	v.curStrip = (v.curStrip + 1) % NumStrips
+	v.curColor = (v.curColor + 1) % len(NamedColors)
+}
+
+func (v *CircularViz) RefreshRate() float64 {
+	return .25
+}
+
 type SpiralViz struct {
 	curStrip uint8
 	curLED   uint8
@@ -53,7 +79,7 @@ func (v *SpiralViz) String() string {
 
 func (v *SpiralViz) Mutate(n *Noodle) {
 	v.curStrip += 1
-	if v.curStrip == Strips {
+	if v.curStrip == NumStrips {
 		v.curStrip = 0
 		v.curLED = (v.curLED + 1) % LEDsPerStrip
 	}

@@ -9,29 +9,24 @@ import (
 )
 
 const (
-	Strips         = 4
+	NumStrips      = 4
 	LEDsPerStrip   = 37
 	LEDsPerChannel = 64
-	TotalLeds      = Strips * LEDsPerStrip
+	TotalLeds      = NumStrips * LEDsPerStrip
 )
-
-type Pixel struct {
-	R uint8
-	G uint8
-	B uint8
-}
 
 type Strip struct {
 	Pixels []Pixel
 }
 
 type Noodle struct {
-	button  hwio.Pin
-	client  *opc.Client
-	message *opc.Message
-	Strips  []Strip
-	curViz  Viz
-	prevViz Viz
+	button        hwio.Pin
+	client        *opc.Client
+	message       *opc.Message
+	Strips        []Strip
+	MaxBrightness uint8
+	curViz        Viz
+	prevViz       Viz
 }
 
 func NewNoodle(button_gpio string) (*Noodle, error) {
@@ -54,15 +49,16 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 
 	var message *opc.Message
 	message = opc.NewMessage(0)
-	message.SetLength(uint16(LEDsPerChannel * Strips * 3))
+	message.SetLength(uint16(LEDsPerChannel * NumStrips * 3))
 
-	strips := make([]Strip, Strips)
-	for i := 0; i < Strips; i++ {
+	strips := make([]Strip, NumStrips)
+	for i := 0; i < NumStrips; i++ {
 		strips[i] = Strip{}
 		strips[i].Pixels = make([]Pixel, LEDsPerStrip)
 	}
 
-	viz := NewSpiralViz(5)
+	//viz := NewSiralViz(5)
+	viz := NewCircularViz()
 	fmt.Println(viz.String())
 	return &Noodle{
 		button:  button,
