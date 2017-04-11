@@ -58,7 +58,8 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 	}
 
 	//viz := NewSiralViz(5)
-	viz := NewCircularViz()
+	//viz := NewCircularViz()
+	viz := NewSnakeViz()
 	fmt.Println(viz.String())
 	return &Noodle{
 		button:  button,

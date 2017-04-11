@@ -2,12 +2,17 @@ package noodle
 
 import (
 	"fmt"
+	"math/rand"
 )
 
 const (
 	MaxBrightness = 200
 	Increasing    = 255
 	Decreasing    = 1
+	Up            = "up"
+	Down          = "down"
+	Left          = "left"
+	Right         = "right"
 )
 
 type Viz interface {
@@ -40,6 +45,90 @@ func (v *CircularViz) Mutate(n *Noodle) {
 
 func (v *CircularViz) RefreshRate() float64 {
 	return .25
+}
+
+type SnakeViz struct {
+	dir      string
+	headx    uint
+	heady    uint
+	curColor Pixel
+	count    int
+}
+
+func NewSnakeViz() Viz {
+	viz := &SnakeViz{
+		headx:    uint(rand.Intn(NumStrips)),
+		heady:    uint(rand.Intn(LEDsPerStrip)),
+		curColor: Red,
+	}
+	viz.dir = Up
+	return viz
+}
+
+func (v *SnakeViz) GetNewLocation() (string, uint, uint) {
+	if v.dir == Up {
+		dir := []string{Left, Right, Up, Up, Up}[int(rand.Intn(5))]
+		if dir == Left {
+			return Left, (v.headx - 1) % NumStrips, v.heady
+		} else if dir == Right {
+			return Right, (v.headx + 1) % NumStrips, v.heady
+		} else {
+			return Up, v.headx, (v.heady + 1) % LEDsPerStrip
+		}
+	} else if v.dir == Down {
+		dir := []string{Left, Right, Down, Up, Up}[int(rand.Intn(5))]
+		if dir == Left {
+			return Left, (v.headx - 1) % NumStrips, v.heady
+		} else if dir == Right {
+			return Right, (v.headx + 1) % NumStrips, v.heady
+		} else {
+			return Down, v.headx, (v.heady - 1) % LEDsPerStrip
+		}
+	} else if v.dir == Left {
+		dir := []string{Up, Down, Left, Up, Up}[int(rand.Intn(5))]
+		if dir == Left {
+			return Left, (v.headx - 1) % NumStrips, v.heady
+		} else if dir == Down {
+			return Down, v.headx, (v.heady - 1) % LEDsPerStrip
+		} else {
+			return Left, v.headx, (v.heady + 1) % LEDsPerStrip
+		}
+	} else if v.dir == Right {
+		dir := []string{Down, Up, Right, Up, Up}[int(rand.Intn(5))]
+		if dir == Right {
+			return Right, (v.headx + 1) % NumStrips, v.heady
+		} else if dir == Down {
+			return Down, v.headx, (v.heady - 1) % LEDsPerStrip
+		} else {
+			return Up, v.headx, (v.heady + 1) % LEDsPerStrip
+		}
+	}
+	// really should return err here
+	return "", 0, 0
+}
+
+func (v *SnakeViz) String() string {
+	return fmt.Sprintf("SnakeViz: head: [%2d, %2d] - dir: %s",
+		v.headx,
+		v.heady,
+		v.dir)
+}
+
+func (v *SnakeViz) Mutate(n *Noodle) {
+	dir, x, y := v.GetNewLocation()
+	n.Strips[x].Pixels[y] = v.curColor
+	v.dir = dir
+	v.headx = x
+	v.heady = y
+	v.count += 1
+	if v.count > 100 {
+		v.curColor = NamedColors[rand.Intn(len(NamedColors))]
+		v.count = 0
+	}
+}
+
+func (v *SnakeViz) RefreshRate() float64 {
+	return .05
 }
 
 type SpiralViz struct {
