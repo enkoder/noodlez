@@ -47,6 +47,38 @@ func (v *CircularViz) RefreshRate() float64 {
 	return .25
 }
 
+type SoftCircularViz struct {
+	curStrip int
+	curColor int
+}
+
+func NewSoftCircularViz() Viz {
+	viz := &SoftCircularViz{}
+	return viz
+}
+
+func (v *SoftCircularViz) String() string {
+	return fmt.Sprintf("SoftCircularViz: curStrip: %d - curColor: %d", v.curStrip, v.curColor)
+}
+
+func (v *SoftCircularViz) Mutate(n *Noodle) {
+	for strip := 0; strip < NumStrips; strip++ {
+		for i := 0; i < LEDsPerStrip; i++ {
+			if strip%2 == v.curStrip {
+				n.Strips[strip].Pixels[i] = Off
+			} else {
+				n.Strips[strip].Pixels[i] = NamedColors[v.curColor]
+			}
+		}
+	}
+	v.curStrip = (v.curStrip + 1) % 2
+	v.curColor = (v.curColor + 1) % len(NamedColors)
+}
+
+func (v *SoftCircularViz) RefreshRate() float64 {
+	return 2
+}
+
 type SnakeViz struct {
 	dir      string
 	headx    uint

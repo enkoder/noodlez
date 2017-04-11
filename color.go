@@ -15,6 +15,7 @@ func (p Pixel) Equals(other Pixel) bool {
 }
 
 var (
+	Off         = Pixel{R: 0, G: 0, B: 0}
 	Blue        = Pixel{R: 0, G: 0, B: MaxBrightness}
 	Red         = Pixel{R: MaxBrightness, G: 0, B: 0}
 	Cyan        = Pixel{R: 0, G: MaxBrightness, B: MaxBrightness}

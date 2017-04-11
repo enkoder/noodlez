@@ -27,6 +27,8 @@ type Noodle struct {
 	MaxBrightness uint8
 	curViz        Viz
 	prevViz       Viz
+	vizs          []Viz
+	vizi          int
 }
 
 func NewNoodle(button_gpio string) (*Noodle, error) {
@@ -57,17 +59,21 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		strips[i].Pixels = make([]Pixel, LEDsPerStrip)
 	}
 
-	//viz := NewSiralViz(5)
-	//viz := NewCircularViz()
-	viz := NewSnakeViz()
-	fmt.Println(viz.String())
+	vizs := []Viz{
+		NewSoftCircularViz(),
+		NewSpiralViz(10),
+		NewCircularViz(),
+		NewSnakeViz()}
+
 	return &Noodle{
 		button:  button,
 		client:  client,
 		message: message,
 		Strips:  strips,
-		prevViz: nil,
-		curViz:  viz,
+		vizs:    vizs,
+		prevViz: vizs[0],
+		curViz:  vizs[0],
+		vizi:    0,
 	}, nil
 }
 
@@ -91,10 +97,9 @@ func (n *Noodle) VizLoop() {
 		}
 
 		// Read button press
-		if time.Since(lastButtonRead) > time.Millisecond*100 {
+		if time.Since(lastButtonRead) > time.Millisecond*10 {
 			lastButtonRead = time.Now()
 			buttval, err = n.ButtonPressed()
-			fmt.Printf("buttval: %t - prevbutt: %t - time: %s\n", buttval, prevButtVal, time.Since(lastButtonPress).String())
 			if err != nil {
 				fmt.Printf("Error during button read: %v", err)
 				continue
@@ -109,12 +114,14 @@ func (n *Noodle) VizLoop() {
 				// change viz
 				if time.Since(lastButtonPress) > 1*time.Second && !changed {
 					changed = true
+					n.prevViz = n.vizs[n.vizi]
+					n.vizi = (n.vizi + 1) % len(n.vizs)
+					n.curViz = n.vizs[n.vizi]
 					n.Off()
-					// Shoot lights viz
-				} else if !changed {
-
 				}
-				// no press
+				// Shoot lights viz
+			} else if !buttval && prevButtVal && time.Since(lastButtonRead) > 100*time.Millisecond {
+
 			} else {
 				changed = false
 				prevButtVal = false
