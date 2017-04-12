@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/enkoder/noodle"
+	"github.com/enkoder/noodlez"
 )
 
 const (
