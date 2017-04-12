@@ -1,0 +1,10 @@
+[Unit]
+Description=Starts the noodle client
+After=fcserver.service
+
+[Service]
+ExecStart=/home/pi/noodle/noodle
+Restart  = always
+
+[Install]
+WantedBy=multi-user.target

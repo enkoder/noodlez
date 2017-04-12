@@ -1,0 +1,9 @@
+[Unit]
+Description=Starts the fadecandy server
+
+[Service]
+ExecStart=/home/pi/noodle/fadecandy/server/fcserver
+Restart  = always
+
+[Install]
+WantedBy=multi-user.target
