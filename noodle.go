@@ -32,10 +32,9 @@ type Noodle struct {
 	message       *opc.Message
 	Strips        []*Strip
 	MaxBrightness uint8
-	curViz        Viz
-	prevViz       Viz
 	vizs          []Viz
-	vizi          int
+	prevViz       int
+	curViz        int
 }
 
 func NewNoodle(button_gpio string) (*Noodle, error) {
@@ -71,7 +70,9 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		NewSpiralViz(),
 		NewCircularViz(),
 		NewVertViz(),
-		NewSnakeViz()}
+		NewSnakeViz(),
+		NewLaserViz(),
+	}
 
 	return &Noodle{
 		button:  button,
@@ -79,10 +80,24 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		message: message,
 		Strips:  strips,
 		vizs:    vizs,
-		prevViz: vizs[0],
-		curViz:  vizs[1],
-		vizi:    0,
+		prevViz: 0,
+		curViz:  0,
 	}, nil
+}
+
+func (n *Noodle) NextViz() {
+	n.Off()
+	n.prevViz = n.curViz
+	n.curViz = (n.curViz + 1) % len(n.vizs)
+}
+
+func (n *Noodle) FireTheLaser() {
+	n.prevViz = n.curViz
+	n.curViz = len(n.vizs) - 1
+}
+
+func (n *Noodle) StopHumpingTheLaser() {
+	n.curViz = n.prevViz
 }
 
 // VizLoop runs forever as the main run thread calling Mutate on the Viz's
@@ -96,10 +111,14 @@ func (n *Noodle) VizLoop() {
 	prevButtVal := false
 	changed := false
 
+	var viz Viz
 	for {
-		if time.Since(lastRender).Seconds() > n.curViz.RefreshRate() {
-			fmt.Println(n.curViz.String())
-			n.curViz.Mutate(n)
+		// sets the viz on each loop. yolo
+		viz = n.vizs[n.curViz]
+
+		if time.Since(lastRender).Seconds() > viz.RefreshRate() {
+			fmt.Println(viz.String())
+			viz.Mutate(n)
 			n.Render()
 			lastRender = time.Now()
 		}
@@ -113,22 +132,26 @@ func (n *Noodle) VizLoop() {
 				continue
 			}
 
-			// Someone just pressed a button
+			// Someone just pressed a button, store that state
 			if buttval && !prevButtVal {
 				lastButtonPress = time.Now()
 				prevButtVal = true
+
+				// just depressed button, check for short press
+			} else if !buttval && prevButtVal && !changed {
+				prevButtVal = false
+				// Shoot lights viz
+				if time.Since(lastButtonPress) > 10*time.Millisecond {
+					n.FireTheLaser()
+				}
+
 				// If its been pressed for a bit
 			} else if buttval && prevButtVal {
 				// change viz
 				if time.Since(lastButtonPress) > 1*time.Second && !changed {
 					changed = true
-					n.prevViz = n.vizs[n.vizi]
-					n.vizi = (n.vizi + 1) % len(n.vizs)
-					n.curViz = n.vizs[n.vizi]
-					n.Off()
+					n.NextViz()
 				}
-				// Shoot lights viz
-			} else if !buttval && prevButtVal && time.Since(lastButtonRead) > 100*time.Millisecond {
 
 			} else {
 				changed = false

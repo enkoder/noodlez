@@ -42,6 +42,46 @@ type Viz interface {
 	String() string
 }
 
+type LaserViz struct {
+	curPos   int
+	curStrip int
+	color    colorful.Color
+}
+
+func NewLaserViz() Viz {
+	return &LaserViz{
+		color:    RandomColor(),
+		curPos:   LEDsPerStrip - 1,
+		curStrip: 0,
+	}
+}
+
+func (v *LaserViz) String() string {
+	return fmt.Sprintf("LaserViz: curPos: %d", v.curPos)
+}
+
+func (v *LaserViz) Mutate(n *Noodle) {
+	// Start off with turning off leds
+	if v.curPos == LEDsPerStrip-1 {
+		n.Off()
+	}
+
+	n.Strips[v.curStrip].Pixels[v.curPos] = v.color
+	v.curPos -= 1
+
+	// ending the laser beam
+	if v.curPos == 0 {
+		n.StopHumpingTheLaser()
+		v.curPos = LEDsPerStrip - 1
+		v.curStrip = (v.curStrip + 1) % NumStrips
+		v.color = RandomColor()
+	}
+}
+
+func (v *LaserViz) RefreshRate() float64 {
+	return .009
+}
+
 type CircularViz struct {
 	curStrip int
 	curColor int
@@ -228,6 +268,30 @@ func (v *SpiralViz) Mutate(n *Noodle) {
 
 func (v SpiralViz) RefreshRate() float64 {
 	return .04
+}
+
+//######### Sparkle #########
+type SparkleViz struct {
+	sparks [50]struct {
+		color colorful.Color
+		x     uint
+		y     uint
+	}
+}
+
+func NewSparkleViz() Viz {
+	return &SparkleViz{}
+}
+
+func (v *SparkleViz) String() string {
+	return fmt.Sprintf("SparkleViz:")
+}
+
+func (v *SparkleViz) Mutate(n *Noodle) {
+}
+
+func (v *SparkleViz) RefreshRate() float64 {
+	return .5
 }
 
 type VertViz struct {
