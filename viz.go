@@ -272,15 +272,13 @@ func (v SpiralViz) RefreshRate() float64 {
 
 //######### Sparkle #########
 type SparkleViz struct {
-	sparks [50]struct {
-		color colorful.Color
-		x     uint
-		y     uint
-	}
+	sparks int
 }
 
 func NewSparkleViz() Viz {
-	return &SparkleViz{}
+	return &SparkleViz{
+		sparks: 10,
+	}
 }
 
 func (v *SparkleViz) String() string {
@@ -288,10 +286,16 @@ func (v *SparkleViz) String() string {
 }
 
 func (v *SparkleViz) Mutate(n *Noodle) {
+	for _, s := range n.Strips {
+		s.SetColor(Off)
+		for i := 0; i < 10; i++ {
+			s.Pixels[rand.Intn(LEDsPerStrip)] = RandomColor()
+		}
+	}
 }
 
 func (v *SparkleViz) RefreshRate() float64 {
-	return .5
+	return 1
 }
 
 type VertViz struct {

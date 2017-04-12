@@ -66,6 +66,7 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 	}
 
 	vizs := []Viz{
+		NewSparkleViz(),
 		NewSoftCircularViz(),
 		NewSpiralViz(),
 		NewCircularViz(),
