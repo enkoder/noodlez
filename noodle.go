@@ -66,9 +66,10 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 	}
 
 	vizs := []Viz{
-		NewSparkleViz(),
 		NewSoftCircularViz(),
 		NewSpiralViz(),
+		NewSparkleViz(),
+		NewVertSwapViz(),
 		NewCircularViz(),
 		NewVertViz(),
 		NewSnakeViz(),
@@ -89,7 +90,7 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 func (n *Noodle) NextViz() {
 	n.Off()
 	n.prevViz = n.curViz
-	n.curViz = (n.curViz + 1) % len(n.vizs)
+	n.curViz = (n.curViz + 1) % (len(n.vizs) - 1)
 }
 
 func (n *Noodle) FireTheLaser() {

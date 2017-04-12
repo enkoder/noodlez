@@ -349,3 +349,60 @@ func (v *VertViz) Mutate(n *Noodle) {
 func (v *VertViz) RefreshRate() float64 {
 	return .05
 }
+
+type VertSwapViz struct {
+	colors    [NumStrips]colorful.Color
+	positions [NumStrips]int
+	dirs      [NumStrips]int
+	size      int
+}
+
+func NewVertSwapViz() Viz {
+	viz := &VertSwapViz{
+		size: 8,
+	}
+	for i := 0; i < NumStrips; i++ {
+		viz.colors[i] = RandomColor()
+		viz.positions[i] = rand.Intn(LEDsPerStrip - (viz.size / 2))
+		if i%2 == 0 {
+			viz.dirs[i] = 1
+		} else {
+			viz.dirs[i] = -1
+		}
+	}
+	return viz
+}
+
+func (v *VertSwapViz) String() string {
+	return fmt.Sprintf("VertSwapViz: ")
+}
+
+func (v *VertSwapViz) Mutate(n *Noodle) {
+	n.Off()
+	// Update position
+	for i, pos := range v.positions {
+		v.positions[i] = v.dirs[i] + pos
+	}
+
+	// render the sections
+	for i, pos := range v.positions {
+		for j := pos - (v.size / 2); j < pos+(v.size/2); j++ {
+			n.Strips[i].Pixels[j] = v.colors[i]
+		}
+	}
+
+	// check bounds
+	for i, pos := range v.positions {
+		if pos-(v.size/2) == 0 {
+			v.colors[i] = RandomColor()
+			v.dirs[i] = 1
+		} else if pos+(v.size/2) == LEDsPerStrip-1 {
+			v.colors[i] = RandomColor()
+			v.dirs[i] = -1
+		}
+	}
+}
+
+func (v *VertSwapViz) RefreshRate() float64 {
+	return .15
+}
