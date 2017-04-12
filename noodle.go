@@ -20,11 +20,17 @@ type Strip struct {
 	Pixels []colorful.Color
 }
 
+func (s *Strip) SetColor(color colorful.Color) {
+	for i := 0; i < LEDsPerStrip; i++ {
+		s.Pixels[i] = color
+	}
+}
+
 type Noodle struct {
 	button        hwio.Pin
 	client        *opc.Client
 	message       *opc.Message
-	Strips        []Strip
+	Strips        []*Strip
 	MaxBrightness uint8
 	curViz        Viz
 	prevViz       Viz
@@ -54,9 +60,9 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 	message = opc.NewMessage(0)
 	message.SetLength(uint16(LEDsPerChannel * NumStrips * 3))
 
-	strips := make([]Strip, NumStrips)
+	strips := make([]*Strip, NumStrips)
 	for i := 0; i < NumStrips; i++ {
-		strips[i] = Strip{}
+		strips[i] = &Strip{}
 		strips[i].Pixels = make([]colorful.Color, LEDsPerStrip)
 	}
 
@@ -64,6 +70,7 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		NewSoftCircularViz(),
 		NewSpiralViz(),
 		NewCircularViz(),
+		NewVertViz(),
 		NewSnakeViz()}
 
 	return &Noodle{

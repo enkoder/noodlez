@@ -15,7 +15,7 @@ const (
 	Down          = "down"
 	Left          = "left"
 	Right         = "right"
-	NumColors     = 12
+	NumColors     = 24
 )
 
 var (
@@ -228,4 +228,56 @@ func (v *SpiralViz) Mutate(n *Noodle) {
 
 func (v SpiralViz) RefreshRate() float64 {
 	return .04
+}
+
+type VertViz struct {
+	mainColor colorful.Color
+	midColor  colorful.Color
+	midCount  int
+	midPos    int
+	dir       int
+}
+
+func NewVertViz() Viz {
+	return &VertViz{
+		mainColor: RandomColor(),
+		midColor:  RandomColor(),
+		midCount:  6,
+		midPos:    LEDsPerStrip / 2,
+		dir:       1,
+	}
+}
+
+func (v *VertViz) String() string {
+	return fmt.Sprintf("VertViz: midPos=%d", v.midPos)
+}
+
+func (v *VertViz) Mutate(n *Noodle) {
+	for _, s := range n.Strips {
+		for i := 0; i < LEDsPerStrip; i++ {
+			s.SetColor(v.mainColor)
+		}
+	}
+	for _, s := range n.Strips {
+		for i := v.midPos - (v.midCount / 2); i < v.midPos+(v.midCount/2); i++ {
+			s.Pixels[i] = v.midColor
+		}
+	}
+
+	v.midPos += v.dir
+	// top
+	if v.midPos == LEDsPerStrip-(v.midCount/2) {
+		v.dir = -1
+		v.mainColor = v.midColor
+		v.midColor = RandomColor()
+		// bottom
+	} else if v.midPos == (v.midCount / 2) {
+		v.dir = 1
+		v.mainColor = v.midColor
+		v.midColor = RandomColor()
+	}
+}
+
+func (v *VertViz) RefreshRate() float64 {
+	return .05
 }
