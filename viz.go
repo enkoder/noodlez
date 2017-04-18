@@ -1,4 +1,4 @@
-package noodle
+package noodlez
 
 import (
 	"fmt"

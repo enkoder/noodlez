@@ -11,7 +11,7 @@ const (
 )
 
 func main() {
-	n, err := noodle.NewNoodle(ButtonPin)
+	n, err := noodlez.NewNoodle(ButtonPin)
 	if err != nil {
 		os.Stderr.WriteString(err.Error() + "\n")
 		os.Exit(1)

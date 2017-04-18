@@ -1,9 +1,11 @@
-package noodle
+package noodlez
 
 import (
 	"fmt"
 	"time"
 
+	"github.com/currantlabs/gatt"
+	"github.com/enkoder/noodlez/goodle"
 	"github.com/kellydunn/go-opc"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/mrmorphic/hwio"
@@ -35,6 +37,11 @@ type Noodle struct {
 	vizs          []Viz
 	prevViz       int
 	curViz        int
+}
+
+func (n *Noodle) HandleWrite(r gatt.Request, data []byte) byte {
+	fmt.Println("Wrote:", string(data))
+	return gatt.StatusSuccess
 }
 
 func NewNoodle(button_gpio string) (*Noodle, error) {
@@ -76,7 +83,7 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		NewLaserViz(),
 	}
 
-	return &Noodle{
+	noodle := &Noodle{
 		button:  button,
 		client:  client,
 		message: message,
@@ -84,7 +91,14 @@ func NewNoodle(button_gpio string) (*Noodle, error) {
 		vizs:    vizs,
 		prevViz: 0,
 		curViz:  0,
-	}, nil
+	}
+
+	err = goodle.InitBluetooth(noodle.HandleWrite)
+	if err != nil {
+		return nil, fmt.Errorf("Error during InitBluetooth: %v\n", err)
+	}
+
+	return noodle, nil
 }
 
 func (n *Noodle) NextViz() {
