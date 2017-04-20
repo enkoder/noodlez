@@ -2,6 +2,7 @@ package noodlez
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/currantlabs/gatt"
@@ -40,7 +41,28 @@ type Noodle struct {
 }
 
 func (n *Noodle) HandleWrite(r gatt.Request, data []byte) byte {
-	fmt.Println("Wrote:", string(data))
+	if len(data) == 0 {
+		return gatt.StatusUnexpectedError
+	}
+
+	index64, err := strconv.ParseInt(string(data), 10, 32)
+	if err != nil {
+		return gatt.StatusUnexpectedError
+	}
+	index := int(index64)
+
+	fmt.Printf("Received: %d\n", index)
+
+	if index < 0 || index > len(n.vizs)-1 {
+		return gatt.StatusUnexpectedError
+	}
+
+	if index == len(n.vizs)-1 {
+		n.FireTheLaser()
+	} else {
+		n.SetViz(index)
+	}
+
 	return gatt.StatusSuccess
 }
 
@@ -107,6 +129,12 @@ func (n *Noodle) NextViz() {
 	n.curViz = (n.curViz + 1) % (len(n.vizs) - 1)
 }
 
+func (n *Noodle) SetViz(viz int) {
+	n.Off()
+	n.prevViz = n.curViz
+	n.curViz = viz
+}
+
 func (n *Noodle) FireTheLaser() {
 	n.prevViz = n.curViz
 	n.curViz = len(n.vizs) - 1
@@ -118,7 +146,7 @@ func (n *Noodle) StopHumpingTheLaser() {
 
 // VizLoop runs forever as the main run thread calling Mutate on the Viz's
 // and checking for input like buttons and maybe bluetooth
-func (n *Noodle) VizLoop() {
+func (n *Noodle) VizLoop(debug bool) {
 	var err error
 	lastRender := time.Now()
 	lastButtonPress := time.Now()
@@ -133,7 +161,9 @@ func (n *Noodle) VizLoop() {
 		viz = n.vizs[n.curViz]
 
 		if time.Since(lastRender).Seconds() > viz.RefreshRate() {
-			fmt.Println(viz.String())
+			if debug {
+				fmt.Println(viz.String())
+			}
 			viz.Mutate(n)
 			n.Render()
 			lastRender = time.Now()

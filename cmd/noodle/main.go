@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 
 	"github.com/enkoder/noodlez"
@@ -11,6 +12,7 @@ const (
 )
 
 func main() {
+	debug := flag.Bool("debug", false, "Enable debug output")
 	n, err := noodlez.NewNoodle(ButtonPin)
 	if err != nil {
 		os.Stderr.WriteString(err.Error() + "\n")
@@ -23,5 +25,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	n.VizLoop()
+	n.VizLoop(*debug)
 }

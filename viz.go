@@ -43,16 +43,14 @@ type Viz interface {
 }
 
 type LaserViz struct {
-	curPos   int
-	curStrip int
-	color    colorful.Color
+	curPos int
+	color  colorful.Color
 }
 
 func NewLaserViz() Viz {
 	return &LaserViz{
-		color:    RandomColor(),
-		curPos:   LEDsPerStrip - 1,
-		curStrip: 0,
+		color:  RandomColor(),
+		curPos: LEDsPerStrip - 1,
 	}
 }
 
@@ -66,14 +64,15 @@ func (v *LaserViz) Mutate(n *Noodle) {
 		n.Off()
 	}
 
-	n.Strips[v.curStrip].Pixels[v.curPos] = v.color
+	for _, s := range n.Strips {
+		s.Pixels[v.curPos] = v.color
+	}
 	v.curPos -= 1
 
 	// ending the laser beam
 	if v.curPos == 0 {
 		n.StopHumpingTheLaser()
 		v.curPos = LEDsPerStrip - 1
-		v.curStrip = (v.curStrip + 1) % NumStrips
 		v.color = RandomColor()
 	}
 }
